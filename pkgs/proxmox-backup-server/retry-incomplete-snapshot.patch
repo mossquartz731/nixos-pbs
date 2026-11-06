@@ -1,0 +1,65 @@
+diff --git a/src/api2/backup/mod.rs b/src/api2/backup/mod.rs
+index a9b1ca5c2..c98b9fbaf 100644
+--- a/src/api2/backup/mod.rs
++++ b/src/api2/backup/mod.rs
+@@ -28,7 +28,7 @@ use pbs_api_types::{
+ use pbs_config::CachedUserInfo;
+ use pbs_datastore::fixed_index::FIXED_CHUNK_SIZE;
+ use pbs_datastore::index::IndexFile;
+-use pbs_datastore::{DataStore, PROXMOX_BACKUP_PROTOCOL_ID_V1};
++use pbs_datastore::{BackupInfo, DataStore, PROXMOX_BACKUP_PROTOCOL_ID_V1};
+ use pbs_tools::json::{required_array_param, required_integer_param, required_string_param};
+ 
+ use crate::api2::ExecInheritLogContext;
+@@ -202,9 +202,31 @@ fn upgrade_to_backup_protocol(
+ 
+         let (path, is_new, snap_guard) =
+             datastore.create_locked_backup_dir(backup_dir.backup_ns(), backup_dir.as_ref())?;
+-        if !is_new {
+-            bail!("backup directory already exists.");
+-        }
++        let (path, snap_guard) = if is_new {
++            (path, snap_guard)
++        } else {
++            let existing = BackupInfo::new(backup_dir.clone())?;
++            if existing.is_finished() {
++                bail!("backup directory already exists.");
++            }
++
++            // A failed S3 upload can leave the local cache directory behind when the backend is
++            // unavailable during cleanup. The directory has no manifest, so it is safe to retry
++            // its native removal once the backend is reachable again. Without this, push sync
++            // treats the unfinished timestamp as current and never retries the snapshot.
++            drop(snap_guard);
++            warn!("removing incomplete backup directory before retry: {backup_dir:?}");
++            datastore
++                .delete_snapshot(&backup_dir)
++                .context("failed to remove incomplete backup directory before retry")?;
++
++            let (path, is_new, snap_guard) =
++                datastore.create_locked_backup_dir(backup_dir.backup_ns(), backup_dir.as_ref())?;
++            if !is_new {
++                bail!("unable to recreate incomplete backup directory.");
++            }
++            (path, snap_guard)
++        };
+ 
+         WorkerTask::spawn(
+             worker_type,
+diff --git a/src/server/push.rs b/src/server/push.rs
+index 98f843a49..eff6b6409 100644
+--- a/src/server/push.rs
++++ b/src/server/push.rs
+@@ -814,7 +814,11 @@ pub(crate) async fn push_group(
+     target_snapshots.sort_unstable_by_key(|a| a.backup.time);
+ 
+     let last_snapshot_time = target_snapshots
+-        .last()
++        .iter()
++        // A missing size means the target has no readable manifest and the snapshot is unfinished.
++        // Do not let a failed upload suppress its own retry as the newest target snapshot.
++        .rev()
++        .find(|snapshot| snapshot.size.is_some())
+         .map(|snapshot| snapshot.backup.time)
+         .unwrap_or(i64::MIN);
+ 

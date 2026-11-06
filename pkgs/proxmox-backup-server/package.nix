@@ -81,6 +81,9 @@ rustPlatform.buildRustPackage {
 
   cargoPatches = [ ./0001-cargo-re-route-dependencies-not-available-on-crates..patch ];
 
+  # Fork-only: retry a push-sync snapshot that a failed S3 upload left unfinished.
+  patches = [ ./retry-incomplete-snapshot.patch ];
+
   # The web UI is assembled here: install our trimmed-down panel definitions and
   # logo shim, drop the features that don't apply to this NixOS port (xterm.js
   # shell, APT updates/repos, disk/ZFS management, network/time config,
