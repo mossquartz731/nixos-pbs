@@ -1,0 +1,70 @@
+# Fork-only: follow AWildLeon/nixos-pbs and move PBS to each released .deb.
+# The port's updateScript needs Nix and Cargo, so a hosted bot cannot run it.
+name: Follow upstream and PBS releases
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: follow-releases
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            extra-substituters = https://awildleon-nixos-pbs.cachix.org
+            extra-trusted-public-keys = awildleon-nixos-pbs.cachix.org-1:4kEEBSONGJ0F7Ita/3ZRcTWaR6M7YHXhltJaoEYl3ew=
+
+      # The updateScript rewrites sources.json and Cargo.lock whole, so a
+      # conflict in only those two files is resolved by regenerating them.
+      - name: Merge upstream
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch https://github.com/AWildLeon/nixos-pbs.git main
+          if ! git merge --no-edit FETCH_HEAD; then
+            generated="pkgs/proxmox-backup-server/Cargo.lock pkgs/proxmox-backup-server/sources.json"
+            for path in $(git diff --name-only --diff-filter=U); do
+              case " $generated " in *" $path "*) git checkout --theirs -- "$path" && git add "$path" ;; *) exit 1 ;; esac
+            done
+            git commit --no-edit
+          fi
+
+      - name: Run the port's updateScript
+        run: |
+          nix shell --inputs-from . nixpkgs#{bash,curl,cacert,gzip,jq,dpkg,git,cargo,nix-prefetch-git} \
+            -c bash -euo pipefail pkgs/proxmox-backup-server/update.sh
+          version="$(jq -r .version pkgs/proxmox-backup-server/sources.json)"
+          sed -i -E "s/\*\*PBS [0-9.]+\*\*/**PBS ${version}**/" README.md
+          git add -A
+          git diff --cached --quiet || git commit -m "Update PBS to ${version}"
+
+      - name: Build and run the VM test
+        run: |
+          [ "$(git rev-parse HEAD)" = "$GITHUB_SHA" ] && exit 0
+          nix build --print-build-logs .#packages.x86_64-linux.proxmox-backup-server-fhs
+          nix build --print-build-logs .#checks.x86_64-linux.integration
+
+      - name: Publish
+        run: git push origin HEAD:main
