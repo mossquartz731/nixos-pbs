@@ -60,9 +60,10 @@ jobs:
           git add -A
           git diff --cached --quiet || git commit -m "Update PBS to ${version}"
 
+      # A manual run always builds, to prove fork-only changes such as the patch.
       - name: Build and run the VM test
         run: |
-          [ "$(git rev-parse HEAD)" = "$GITHUB_SHA" ] && exit 0
+          [ "$GITHUB_EVENT_NAME" = schedule ] && [ "$(git rev-parse HEAD)" = "$GITHUB_SHA" ] && exit 0
           nix build --print-build-logs .#packages.x86_64-linux.proxmox-backup-server-fhs
           nix build --print-build-logs .#checks.x86_64-linux.integration
 
