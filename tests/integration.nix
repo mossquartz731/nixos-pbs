@@ -146,5 +146,15 @@ pkgs.testers.runNixOSTest {
         # Server-side workloads against the populated datastore.
         machine.succeed("proxmox-backup-manager verify main")
         machine.succeed("proxmox-backup-manager garbage-collection start main")
+
+    with subtest("daily update finishes without an apt task"):
+        # Upstream's daily update also refreshes the apt database, which has no
+        # apt-get to run here and would leave a failed aptupdate task behind.
+        machine.succeed("systemctl start proxmox-backup-daily-update.service")
+        tasks = json.loads(machine.succeed(
+            "proxmox-backup-manager task list --all --limit 1000 --output-format json"
+        ))
+        apt_tasks = [t["upid"] for t in tasks if t["worker_type"] == "aptupdate"]
+        assert not apt_tasks, f"daily update started apt tasks: {apt_tasks}"
   '';
 }

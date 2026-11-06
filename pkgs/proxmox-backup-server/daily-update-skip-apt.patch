@@ -1,0 +1,47 @@
+diff --git a/src/bin/proxmox-daily-update.rs b/src/bin/proxmox-daily-update.rs
+index 5977224..74a1baf 100644
+--- a/src/bin/proxmox-daily-update.rs
++++ b/src/bin/proxmox-daily-update.rs
+@@ -3,7 +3,6 @@ use serde_json::json;
+ 
+ use proxmox_notify::context::pbs::PBS_CONTEXT;
+ use proxmox_router::{ApiHandler, RpcEnvironment, cli::*};
+-use proxmox_subscription::SubscriptionStatus;
+ 
+ use pbs_buildcfg::configdir;
+ use proxmox_backup::api2;
+@@ -28,33 +27,12 @@ async fn do_update(rpcenv: &mut dyn RpcEnvironment) -> Result<(), Error> {
+     let method = &api2::node::subscription::API_METHOD_CHECK_SUBSCRIPTION;
+     match method.handler {
+         ApiHandler::Sync(handler) => {
+-            if let Err(err) = (handler)(param.clone(), method, rpcenv) {
++            if let Err(err) = (handler)(param, method, rpcenv) {
+                 log::error!("Error checking subscription - {err}");
+             }
+         }
+         _ => unreachable!(),
+     }
+-    let notify = match api2::node::subscription::get_subscription(param, rpcenv) {
+-        Ok(info) => info.status == SubscriptionStatus::Active,
+-        Err(err) => {
+-            log::error!("Error reading subscription - {err}");
+-            false
+-        }
+-    };
+-
+-    let param = json!({
+-        "notify": notify,
+-    });
+-    let method = &api2::node::apt::API_METHOD_APT_UPDATE_DATABASE;
+-    match method.handler {
+-        ApiHandler::Sync(handler) => match (handler)(param, method, rpcenv) {
+-            Err(err) => {
+-                log::error!("Error triggering apt database update - {err}");
+-            }
+-            Ok(upid) => wait_for_local_worker(upid.as_str().unwrap()).await?,
+-        },
+-        _ => unreachable!(),
+-    };
+ 
+     if let Err(err) = check_acme_certificates(rpcenv).await {
+         log::error!("error checking certificates: {err}");

@@ -81,8 +81,15 @@ rustPlatform.buildRustPackage {
 
   cargoPatches = [ ./0001-cargo-re-route-dependencies-not-available-on-crates..patch ];
 
-  # Fork-only: retry a push-sync snapshot that a failed S3 upload left unfinished.
-  patches = [ ./retry-incomplete-snapshot.patch ];
+  # retry-incomplete-snapshot (fork-only): retry a push-sync snapshot that a
+  # failed S3 upload left unfinished.
+  # daily-update-skip-apt: proxmox-daily-update refreshes the apt database
+  # unconditionally, which can only fail without apt-get; the subscription check
+  # and ACME renewal it also runs are kept.
+  patches = [
+    ./retry-incomplete-snapshot.patch
+    ./daily-update-skip-apt.patch
+  ];
 
   # The web UI is assembled here: install our trimmed-down panel definitions and
   # logo shim, drop the features that don't apply to this NixOS port (xterm.js
