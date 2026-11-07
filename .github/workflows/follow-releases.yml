@@ -36,6 +36,12 @@ jobs:
             extra-substituters = https://awildleon-nixos-pbs.cachix.org
             extra-trusted-public-keys = awildleon-nixos-pbs.cachix.org-1:4kEEBSONGJ0F7Ita/3ZRcTWaR6M7YHXhltJaoEYl3ew=
 
+      # Publishes what this job builds, so homelab downloads PBS instead of compiling it.
+      - uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: homelab-packages
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
       # The updateScript rewrites sources.json and Cargo.lock whole, so a
       # conflict in only those two files is resolved by regenerating them.
       - name: Merge upstream
