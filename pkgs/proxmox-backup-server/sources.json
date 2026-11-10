@@ -1,17 +1,17 @@
 {
-  "version": "4.2.9",
+  "version": "4.2.10",
   "repos": {
     "proxmox-backup": {
       "url": "git://git.proxmox.com/git/proxmox-backup.git",
       "name": "proxmox-backup",
-      "rev": "e0d20d290aac07ed86a86cf3b5a7f68c8b66e525",
-      "hash": "sha256-tKTzjmKOF9jelMkFRa5VmcWvfYp08hFl3NPxqlf6qE4="
+      "rev": "1df6dff9c0acdd11386245502b2c7aeed2f440dd",
+      "hash": "sha256-2JFWOOrqykofAcRAq8k7YdAHX1Ha692rNIKEb8H3Ins="
     },
     "proxmox": {
       "url": "git://git.proxmox.com/git/proxmox.git",
       "name": "proxmox",
-      "rev": "dc6ad51eec6cb8be0a8cdaaa46e3635aade580ae",
-      "hash": "sha256-m5xAvAvbUhkcrRGTifcKBn2TopM1GVgPOUnPivDRyLI="
+      "rev": "17d7f43dbca69d622bee07a93626ae1e741f7109",
+      "hash": "sha256-IKqiMd51hhZ0GHpBvK3rMSdnVoheNyPN2GwncgvLOIQ="
     },
     "proxmox-fuse": {
       "url": "git://git.proxmox.com/git/proxmox-fuse.git",
@@ -35,8 +35,8 @@
   "webAssets": {
     "proxmox-backup-docs": {
       "source": "proxmox",
-      "url": "http://download.proxmox.com/debian/pbs/dists/trixie/pbs-no-subscription/binary-amd64/proxmox-backup-docs_4.2.9-1_all.deb",
-      "hash": "sha256-/wsD5CnDa5PUuvozXpW2iDuAT+xbu1lmlw68o4ZI9yI="
+      "url": "http://download.proxmox.com/debian/pbs/dists/trixie/pbs-no-subscription/binary-amd64/proxmox-backup-docs_4.2.10-1_all.deb",
+      "hash": "sha256-+3RA6O3SKr4TGLT7EkhVbr7MPw9Vv+AmAzIz9fzIFeI="
     },
     "libjs-extjs": {
       "source": "proxmox",
@@ -45,8 +45,8 @@
     },
     "proxmox-widget-toolkit": {
       "source": "proxmox",
-      "url": "http://download.proxmox.com/debian/pbs/dists/trixie/pbs-no-subscription/binary-amd64/proxmox-widget-toolkit_5.2.10_all.deb",
-      "hash": "sha256-UCUKI17L4QY4BnV0xd1L9Wsk8Z8tIgULl29aKtQirm4="
+      "url": "http://download.proxmox.com/debian/pbs/dists/trixie/pbs-no-subscription/binary-amd64/proxmox-widget-toolkit_5.2.12_all.deb",
+      "hash": "sha256-hhba3rvaqoV9Zup4pNHuUq7o9uKk3d/2jgJD5NCc6VE="
     },
     "pve-xtermjs": {
       "source": "proxmox",
