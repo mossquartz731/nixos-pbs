@@ -68,17 +68,20 @@ jobs:
 
       # A manual run always builds, to prove fork-only changes such as the patch.
       - name: Build and run the VM test
+        id: build
         run: |
-          [ "$GITHUB_EVENT_NAME" = schedule ] && [ "$(git rev-parse HEAD)" = "$GITHUB_SHA" ] && exit 0
+          if [ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]; then
+            echo "updated=true" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_EVENT_NAME" = schedule ]; then
+            exit 0
+          fi
           nix build --print-build-logs .#packages.x86_64-linux.proxmox-backup-server-fhs
           nix build --print-build-logs .#checks.x86_64-linux.integration
 
       - name: Publish the update branch for review
-        run: |
-          if [ "$(git rev-parse HEAD)" = "$GITHUB_SHA" ]; then
-            exit 0
-          fi
-          update_branch="automation/pbs-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          git push origin "HEAD:refs/heads/${update_branch}"
-          printf '[Open a pull request](https://github.com/%s/compare/main...%s?expand=1)\n' \
-            "$GITHUB_REPOSITORY" "$update_branch" >> "$GITHUB_STEP_SUMMARY"
+        if: steps.build.outputs.updated == 'true'
+        uses: docker://alpine/git@sha256:2306e2b05ee0ef99f5d25b0779f645b24ae9f91ba187107503592fcdfe78da3a # 2.54.1
+        with:
+          args: >-
+            -c safe.directory=/github/workspace push origin
+            HEAD:refs/heads/automation/pbs-${{ github.run_id }}-${{ github.run_attempt }}
