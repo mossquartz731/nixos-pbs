@@ -18,7 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 300
     steps:
+      # The branch-only Git publisher uses checkout's runner-temp credentials.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        # zizmor: ignore[artipacked]
         with:
           fetch-depth: 0
 
@@ -68,10 +70,20 @@ jobs:
 
       # A manual run always builds, to prove fork-only changes such as the patch.
       - name: Build and run the VM test
+        id: build
         run: |
-          [ "$GITHUB_EVENT_NAME" = schedule ] && [ "$(git rev-parse HEAD)" = "$GITHUB_SHA" ] && exit 0
+          if [ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]; then
+            echo "updated=true" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_EVENT_NAME" = schedule ]; then
+            exit 0
+          fi
           nix build --print-build-logs .#packages.x86_64-linux.proxmox-backup-server-fhs
           nix build --print-build-logs .#checks.x86_64-linux.integration
 
-      - name: Publish
-        run: git push origin HEAD:main
+      - name: Publish the update branch for review
+        if: steps.build.outputs.updated == 'true'
+        uses: docker://alpine/git@sha256:2306e2b05ee0ef99f5d25b0779f645b24ae9f91ba187107503592fcdfe78da3a # 2.54.1
+        with:
+          args: >-
+            -c safe.directory=/github/workspace push origin
+            HEAD:refs/heads/automation/pbs-${{ github.run_id }}-${{ github.run_attempt }}
